@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface ICategoryService {
     public List<Category> queryCategoryByPid(Long pid);
+
+    public List<String> queryNamesByIds(List<Long> ids);
 }
