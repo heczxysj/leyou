@@ -1,10 +1,14 @@
 server:
   port: 8093
 spring:
+  application:
+    name: search-server
   data:
     elasticsearch:
       cluster-name: elasticsearch
       cluster-nodes: 192.168.70.128:9300
+  jackson:
+    default-property-inclusion: non_null
 eureka:
   client:
     service-url:

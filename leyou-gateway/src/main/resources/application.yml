@@ -13,6 +13,7 @@ zuul:
   prefix: /api # 路由路径前缀
   routes:
     item-server: /item/** # 商品微服务的映射路径
+    search-server: /search/** #路由到搜索微服务
 
 
 
