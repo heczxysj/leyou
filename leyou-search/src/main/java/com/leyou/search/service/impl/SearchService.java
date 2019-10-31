@@ -11,21 +11,28 @@ import com.leyou.search.client.GoodsClient;
 import com.leyou.search.client.SpecificationClient;
 import com.leyou.search.pojo.Goods;
 import com.leyou.search.pojo.SearchRequest;
+import com.leyou.search.pojo.SearchResult;
 import com.leyou.search.repository.GoodsRepository;
 import com.leyou.search.service.ISearchService;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.elasticsearch.index.query.Operator;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
+import org.elasticsearch.search.aggregations.Aggregation;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.LongTerms;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.core.aggregation.AggregatedPage;
 import org.springframework.data.elasticsearch.core.query.FetchSourceFilter;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SearchService implements ISearchService {
@@ -51,7 +58,7 @@ public class SearchService implements ISearchService {
 
 
     @Override
-    public PageResult<Goods> search(SearchRequest request) {
+    public SearchResult search(SearchRequest request) {
 
         if (StringUtils.isBlank(request.getKey())){
             return null;
@@ -64,15 +71,55 @@ public class SearchService implements ISearchService {
         queryBuilder.withPageable(PageRequest.of(request.getPage() -1,request.getSize()));
         //添加结果集过滤
         queryBuilder.withSourceFilter(new FetchSourceFilter(new String[]{"id","skus","subTitle"},null));
-        //执行查询 获得结果集
-        Page<Goods> goodsPage = this.goodsRepository.search(queryBuilder.build());
 
-        return new PageResult<>(goodsPage.getTotalElements(),goodsPage.getTotalPages(),goodsPage.getContent());
+        //添加分类和品牌的聚合
+        String categoryAggName = "categories";
+        String brandAggName = "brands";
+        queryBuilder.addAggregation(AggregationBuilders.terms(categoryAggName).field("cid3"));
+        queryBuilder.addAggregation(AggregationBuilders.terms(brandAggName).field("brandId"));
+
+        //执行查询 获得结果集
+        AggregatedPage<Goods> goodsPage = (AggregatedPage<Goods>)this.goodsRepository.search(queryBuilder.build());
+
+        //获取聚合结果集并解析
+        List<Map<String,Object>> categorys = getCategoryAggResult(goodsPage.getAggregation(categoryAggName));
+        List<Brand> brands = getBrandAggResult(goodsPage.getAggregation(brandAggName));
+
+        return new SearchResult(goodsPage.getTotalElements(),goodsPage.getTotalPages(),goodsPage.getContent(),categorys,brands);
     }
 
 
+    /**
+     * 解析品牌聚合结果集
+     * @param aggregation
+     * @return
+     */
+    private List<Brand> getBrandAggResult(Aggregation aggregation) {
+        LongTerms terms = (LongTerms)aggregation;
 
+        //获取聚合中的桶
+        return terms.getBuckets().stream().map(bucket -> {
+            return brandClient.queryBrandById(bucket.getKeyAsNumber().longValue());
+        }).collect(Collectors.toList());
+    }
 
+    /**
+     * 解析分类聚合结果集
+     * @param aggregation
+     * @return
+     */
+    private List<Map<String, Object>> getCategoryAggResult(Aggregation aggregation) {
+        LongTerms terms = (LongTerms)aggregation;
+
+        return terms.getBuckets().stream().map(bucket -> {
+            Map<String,Object> map = new HashMap<>();
+            Long id = bucket.getKeyAsNumber().longValue();
+            List<String> names = categoryClient.queryNameByIds(Arrays.asList(id));
+            map.put("id",id);
+            map.put("name",names.get(0));
+            return  map;
+        }).collect(Collectors.toList());
+    }
 
     public Goods buildGoods(Spu spu) throws IOException {
 
