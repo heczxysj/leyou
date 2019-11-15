@@ -36,4 +36,14 @@ public class SpecificationService implements ISpecificationService {
         param.setSearching(searching);
         return this.paramMapper.select(param);
     }
+
+    @Override
+    public List<SpecGroup> queryGroupsWithParam(Long cid) {
+        List<SpecGroup> groups = queryGroupsByCid(cid);
+        groups.forEach(group -> {
+            List<SpecParam> params = queryParams(group.getId(), null, null, null);
+            group.setParams(params);
+        });
+        return groups;
+    }
 }

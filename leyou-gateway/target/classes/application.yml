@@ -14,6 +14,23 @@ zuul:
   routes:
     item-server: /item/** # 商品微服务的映射路径
     search-server: /search/** #路由到搜索微服务
+    user-server: /user/** #用户微服务
+    auth-server: /auth/**
+    cart-server: /cart/**
+  add-host-header: true #表示API网关在进行请求路由转发前为请求设置Host头信息
+  sensitive-headers: #什么都不用写 用来覆盖默认头信息 覆盖后网关就不会过滤cookie信息
+leyou:
+  jwt:
+    pubKeyPath: D:\\ideaProject\\rsa\\rsa.pub # 公钥地址
+    cookieName: LY_TOKEN
+  filter:
+    allowPaths:
+      - /api/auth
+      - /api/search
+      - /api/user/register
+      - /api/user/check
+      - /api/user/code
+      - /api/item
 
 
 

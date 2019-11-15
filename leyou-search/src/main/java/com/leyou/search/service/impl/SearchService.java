@@ -97,6 +97,18 @@ public class SearchService implements ISearchService {
         return new SearchResult(goodsPage.getTotalElements(), goodsPage.getTotalPages(), goodsPage.getContent(), categorys, brands, specs);
     }
 
+    @Override
+    public void save(Long id) throws IOException {
+        Spu spu = goodsClient.querySpuById(id);
+        Goods goods = buildGoods(spu);
+        goodsRepository.save(goods);
+    }
+
+    @Override
+    public void delete(Long id) {
+        goodsRepository.deleteById(id);
+    }
+
     private BoolQueryBuilder buildBoolQueryBuilder(SearchRequest request) {
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
         //给布尔查询添加基本查询条件
